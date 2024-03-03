@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.1)
 
-project(lz4_stream LANGUAGES CXX)
+project(lz4_stream LANGUAGES CXX VERSION "1.0.0")
 
 include(ExternalProject)
 
 option(LZ4_STREAM_UseBundledLz4 "Use bundled static LZ4 library" OFF)
 option(LZ4_STREAM_BuildTests "Build unittests" ON)
+option(LZ4_STREAM_BuildExamples "Build examples" ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -35,19 +36,16 @@ mark_as_advanced(
 
 # Create lz4_stream library
 add_library(${LZ4_STREAM_LIBRARY_NAME} INTERFACE)
-target_include_directories(${LZ4_STREAM_LIBRARY_NAME} INTERFACE ${LZ4_STREAM_LIBRARY_INCLUDE_DIR})
+target_include_directories(${LZ4_STREAM_LIBRARY_NAME}
+  INTERFACE
+    $<BUILD_INTERFACE:${LZ4_STREAM_LIBRARY_INCLUDE_DIR}>
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}>
+)
 
-if(LZ4_STREAM_UseBundledLz4)
-  message(STATUS "Using bundled LZ4 library")
-  add_subdirectory("thirdparty/lz4")
-  target_link_libraries(${LZ4_STREAM_LIBRARY_NAME} INTERFACE lz4)
-  target_include_directories(${LZ4_STREAM_LIBRARY_NAME} INTERFACE lz4)
-else()
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(LZ4 REQUIRED liblz4)
-  target_include_directories(${LZ4_STREAM_LIBRARY_NAME} INTERFACE ${LZ4_INCLUDE_DIR})
-  target_link_libraries(${LZ4_STREAM_LIBRARY_NAME} INTERFACE ${LZ4_LIBRARIES})
-endif()
+file(GLOB_RECURSE HEADER_LIST CONFIGURE_DEPENDS "${LZ4_STREAM_LIBRARY_INCLUDE_DIR}*")
+set_target_properties(${LZ4_STREAM_LIBRARY_NAME} PROPERTIES
+    PUBLIC_HEADER "${HEADER_LIST}"
+)
 
 if(LZ4_STREAM_BuildTests)
   enable_testing()
@@ -55,10 +53,32 @@ if(LZ4_STREAM_BuildTests)
   add_subdirectory("test")
 endif()
 
-# Create example executables
-# TODO: Move to own directory
-add_executable(lz4_compress lz4_compress.cpp)
-target_link_libraries(lz4_compress ${LZ4_STREAM_LIBRARY_NAME})
+if(LZ4_STREAM_BuildExamples)
+  add_executable(lz4_compress lz4_compress.cpp)
+  target_link_libraries(lz4_compress ${LZ4_STREAM_LIBRARY_NAME})
 
-add_executable(lz4_decompress lz4_decompress.cpp)
-target_link_libraries(lz4_decompress ${LZ4_STREAM_LIBRARY_NAME})
+  add_executable(lz4_decompress lz4_decompress.cpp)
+  target_link_libraries(lz4_decompress ${LZ4_STREAM_LIBRARY_NAME})
+endif()
+
+install(TARGETS ${LZ4_STREAM_LIBRARY_NAME}
+  EXPORT ${LZ4_STREAM_LIBRARY_NAME}Targets
+)
+
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    ${LZ4_STREAM_LIBRARY_NAME}ConfigVersion.cmake
+    VERSION ${PACKAGE_VERSION}
+    COMPATIBILITY ExactVersion
+)
+
+install(EXPORT ${LZ4_STREAM_LIBRARY_NAME}Targets
+	FILE ${LZ4_STREAM_LIBRARY_NAME}Targets.cmake
+	DESTINATION ${CMAKE_INSTALL_CMAKEDIR}/${LZ4_STREAM_LIBRARY_NAME}
+)
+
+configure_file(${PROJECT_SOURCE_DIR}/cmake/Config.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/${LZ4_STREAM_LIBRARY_NAME}Config.cmake @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LZ4_STREAM_LIBRARY_NAME}Config.cmake"
+	"${CMAKE_CURRENT_BINARY_DIR}/${LZ4_STREAM_LIBRARY_NAME}ConfigVersion.cmake"
+	DESTINATION ${CMAKE_INSTALL_CMAKEDIR}/${LZ4_STREAM_LIBRARY_NAME}
+)
