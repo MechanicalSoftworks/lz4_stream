@@ -40,17 +40,17 @@ class basic_ostream : public std::ostream
    * @brief Destroys the LZ4 output stream. Calls close() if not already called.
    */
   ~basic_ostream() {
-    close();
+      buffer_->close();
     delete buffer_;
   }
 
   /**
    * @brief Flushes and writes LZ4 footer data to the LZ4 output stream.
    *
-   * After calling this function no more data should be written to the stream.
+   * You can start a new frame ater using this function.
    */
-  void close() {
-    buffer_->close();
+  void reset() {
+    buffer_->reset();
   }
 
  private:
@@ -84,10 +84,18 @@ class basic_ostream : public std::ostream
       if (closed_) {
         return;
       }
-      sync();
-      write_footer();
+      reset();
       LZ4F_freeCompressionContext(ctx_);
       closed_ = true;
+    }
+
+    void reset() {
+      if (closed_) {
+        return;
+      }
+
+      sync();
+      write_footer();
     }
 
   private:
