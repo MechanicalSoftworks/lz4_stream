@@ -90,7 +90,7 @@ class basic_ostream : public std::ostream
     }
 
     void reset() {
-      if (closed_) {
+      if (closed_ || !writing_) {
         return;
       }
 
@@ -137,6 +137,7 @@ class basic_ostream : public std::ostream
                                  + LZ4F_getErrorName(ret));
       }
       sink_.write(&dest_buf_.front(), ret);
+      writing_ = true;
     }
 
     void write_footer() {
@@ -147,6 +148,7 @@ class basic_ostream : public std::ostream
                                  + LZ4F_getErrorName(ret));
       }
       sink_.write(&dest_buf_.front(), ret);
+      writing_ = false;
     }
 
     std::ostream& sink_;
@@ -154,6 +156,7 @@ class basic_ostream : public std::ostream
     std::vector<char> dest_buf_;
     LZ4F_compressionContext_t ctx_;
     bool closed_;
+    bool writing_ = false;
   };
 
   output_buffer* buffer_;
