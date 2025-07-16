@@ -73,7 +73,6 @@ class basic_ostream : public std::ostream
         throw std::runtime_error(std::string("Failed to create LZ4 compression context: ")
                                  + LZ4F_getErrorName(ret));
       }
-      write_header();
     }
 
     ~output_buffer() {
@@ -90,12 +89,17 @@ class basic_ostream : public std::ostream
     }
 
     void reset() {
-      if (closed_ || !writing_) {
+      if (closed_) {
         return;
       }
 
       sync();
-      write_footer();
+
+      // 'sync' can start writing an unflushed buffer.
+      // We might need to write the footer.
+      if (writing_) {
+        write_footer();
+      }
     }
 
   private:
@@ -115,6 +119,10 @@ class basic_ostream : public std::ostream
     }
 
     void compress_and_write() {
+      if (!writing_) {
+          write_header();
+      }
+
       // TODO: Throw exception instead or set badbit
       assert(!closed_);
       int orig_size = static_cast<int>(pptr() - pbase());
