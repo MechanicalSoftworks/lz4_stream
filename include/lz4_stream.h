@@ -31,17 +31,15 @@ class basic_ostream : public std::ostream
    * @param sink The stream to write compressed data to
    */
   basic_ostream(std::ostream& sink)
-    : std::ostream(new output_buffer(sink)),
-      buffer_(dynamic_cast<output_buffer*>(rdbuf())) {
-    assert(buffer_);
+    : std::ostream(&buffer_),
+      buffer_(sink) {
   }
 
   /**
    * @brief Destroys the LZ4 output stream. Calls close() if not already called.
    */
   ~basic_ostream() {
-      buffer_->close();
-    delete buffer_;
+      buffer_.close();
   }
 
   /**
@@ -50,7 +48,7 @@ class basic_ostream : public std::ostream
    * You can start a new frame ater using this function.
    */
   void reset() {
-    buffer_->reset();
+    buffer_.reset();
   }
 
  private:
@@ -167,7 +165,7 @@ class basic_ostream : public std::ostream
     bool writing_ = false;
   };
 
-  output_buffer* buffer_;
+  output_buffer buffer_;
 };
 
 /**
@@ -187,16 +185,8 @@ class basic_istream : public std::istream
    * @param source The stream to read LZ4 compressed data from
    */
   basic_istream(std::istream& source)
-    : std::istream(new input_buffer(source)),
-      buffer_(dynamic_cast<input_buffer*>(rdbuf())) {
-    assert(buffer_);
-  }
-
-  /**
-   * @brief Destroys the LZ4 output stream.
-   */
-  ~basic_istream() {
-    delete buffer_;
+    : std::istream(&buffer_),
+      buffer_(source) {
   }
 
  private:
@@ -258,7 +248,7 @@ class basic_istream : public std::istream
     LZ4F_decompressionContext_t ctx_;
   };
 
-  input_buffer* buffer_;
+  input_buffer buffer_;
 };
 
 using ostream = basic_ostream<>;
