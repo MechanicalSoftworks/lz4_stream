@@ -189,6 +189,13 @@ class basic_istream : public std::istream
       buffer_(source) {
   }
 
+  /**
+   * @brief Returns number of compressed (encoded) bytes read from the source.
+   */
+  size_t pop_ccount() {
+    return buffer_.pop_ccount();
+  }
+
  private:
   class input_buffer : public std::streambuf {
   public:
@@ -232,9 +239,16 @@ class basic_istream : public std::istream
         }
         written_size = dest_size;
         offset_ += src_size;
+        ccount_ += src_size;
       }
       setg(&dest_buf_.front(), &dest_buf_.front(), &dest_buf_.front() + written_size);
       return traits_type::to_int_type(*gptr());
+    }
+
+    size_t pop_ccount() {
+      const auto x = ccount_;
+      ccount_ = 0;
+      return x;
     }
 
     input_buffer(const input_buffer&) = delete;
@@ -245,6 +259,7 @@ class basic_istream : public std::istream
     std::array<char, DestBufSize> dest_buf_;
     size_t offset_;
     size_t src_buf_size_;
+    size_t ccount_ = 0;
     LZ4F_decompressionContext_t ctx_;
   };
 
