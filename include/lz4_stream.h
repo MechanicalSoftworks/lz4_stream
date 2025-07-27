@@ -104,9 +104,10 @@ class basic_ostream : public std::ostream
     int_type overflow(int_type ch) override {
       assert(std::less_equal<char*>()(pptr(), epptr()));
 
+      compress_and_write();
+      
       *pptr() = static_cast<basic_ostream::char_type>(ch);
       pbump(1);
-      compress_and_write();
 
       return ch;
     }
